@@ -6,7 +6,7 @@
   "description": "",
   "authors": [],
   "contact": {},
-  "license": "Apache-2.0",
+  "license": "MIT",
   "icon": "assets/molcar/icon.png",
   "environment": "*",
   "entrypoints": {
