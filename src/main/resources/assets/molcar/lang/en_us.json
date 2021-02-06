@@ -1,0 +1,11 @@
+{
+  "item.molcar.lettuce": "Lettuce",
+  "entity.molcar.molcar": "Molcar",
+  "subtitle.molcar.molcar_happy": "Molcar Happy",
+  "subtitle.molcar.molcar_feed": "Molcar Finished Eating",
+  "subtitle.molcar.molcar_hurt": "Molcar Hurt",
+  "subtitle.molcar.molcar_die": "Molcar died",
+  "subtitle.molcar.molcar_step": "Molcar Walking",
+  "subtitle.molcar.molcar_eat": "Molcar Eating",
+  "item.molcar.molcar_spawn_egg": "Molcar Spawn Egg"
+}

@@ -1,0 +1,45 @@
+{
+	"molcar_happy":{
+		"subtitle": "subtitle.molcar.molcar_happy",
+		"sounds": [
+			{
+				"name":"molcar:molcar_happy"
+			}
+		]
+	},"molcar_eat":{
+		"subtitle": "subtitle.molcar.molcar_eat",
+		"sounds": [
+			{
+				"name":"molcar:molcar_eat"
+			}
+		]
+	},"molcar_feed":{
+		"subtitle": "subtitle.molcar.molcar_feed",
+		"sounds": [
+			{
+				"name":"molcar:molcar_feed"
+			}
+		]
+	},"molcar_hurt":{
+		"subtitle": "subtitle.molcar.molcar_hurt",
+		"sounds": [
+			{
+				"name":"molcar:molcar_hurt"
+			}
+		]
+	},"molcar_die":{
+		"subtitle": "subtitle.molcar.molcar_die",
+		"sounds": [
+			{
+				"name":"molcar:molcar_die"
+			}
+		]
+	},"molcar_step":{
+		"subtitle": "subtitle.molcar.molcar_step",
+		"sounds": [
+			{
+				"name":"molcar:molcar_step"
+			}
+		]
+	}
+}
