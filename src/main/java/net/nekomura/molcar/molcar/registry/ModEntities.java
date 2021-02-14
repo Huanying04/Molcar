@@ -17,7 +17,9 @@ public class ModEntities {
     public static final EntityType<MolcarEntity> MOLCAR = Registry.register(
             Registry.ENTITY_TYPE,
             new Identifier(Molcar.MOD_ID, "molcar"),
-            FabricEntityTypeBuilder.create(SpawnGroup.MISC, MolcarEntity::new).dimensions(EntityDimensions.fixed(1.75f, 1.725f)).build()
+            FabricEntityTypeBuilder.create(SpawnGroup.CREATURE, MolcarEntity::new)
+                    .dimensions(EntityDimensions.fixed(1.75f, 1.725f))  //碰撞箱
+                    .build()
     );
 
     public static void register() {

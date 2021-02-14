@@ -3,12 +3,17 @@ package net.nekomura.molcar.molcar.entity;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.*;
+import net.minecraft.entity.ai.TargetFinder;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.goal.SwimGoal;
+import net.minecraft.entity.ai.goal.WanderAroundGoal;
+import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.passive.PassiveEntity;
+import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -33,7 +38,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class MolcarEntity extends AnimalEntity {
+public class MolcarEntity extends TameableEntity {
 
     private int eatingTime;
     private static final Predicate<ItemEntity> PICKABLE_DROP_FILTER;
@@ -42,25 +47,40 @@ public class MolcarEntity extends AnimalEntity {
         PICKABLE_DROP_FILTER = (itemEntity) -> !itemEntity.cannotPickup()
                                 && itemEntity.isAlive()
                                 && itemEntity.getStack().isFood()
-                                && (itemEntity.getStack().getItem().equals(ModItems.LETTUCE)
+                                && (itemEntity.getStack().getItem().equals(ModItems.LETTUCE_LEAF)
                                     || itemEntity.getStack().getItem().equals(Items.CARROT)
                                     || itemEntity.getStack().getItem().equals(Items.BREAD)
         );
     }
 
-    public MolcarEntity(EntityType<? extends AnimalEntity> entityType, World world) {
+    public MolcarEntity(EntityType<? extends TameableEntity> entityType, World world) {
         super(entityType, world);
         this.setCanPickUpLoot(true);
+        this.setTamed(false);
+    }
+
+    public static DefaultAttributeContainer getAttributeContainer() {
+        return MobEntity
+                .createMobAttributes()
+                .add(EntityAttributes.GENERIC_MAX_HEALTH, 100.0F)
+                .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.3F)
+                .build();
     }
 
     @Override
     protected void initGoals() {
         this.goalSelector.add(1, new SwimGoal(this));
         this.goalSelector.add(2, new MolcarEntity.PickupItemGoal());
+        this.goalSelector.add(3, new MolcarEntity.WanderAroundFarGoal(this, 1.0F));
     }
 
     protected void initAttributes() {
-        this.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(250f);
+        this.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(100.0F);
+        this.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(0.3F);
+    }
+
+    protected void initDataTracker() {
+        super.initDataTracker();
     }
 
     @Nullable
@@ -102,6 +122,18 @@ public class MolcarEntity extends AnimalEntity {
         super.tickMovement();
     }
 
+    public void setTamed(boolean tamed) {
+        super.setTamed(tamed);
+        if (tamed) {
+            this.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(250.0F);
+            this.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(1.0F);
+            this.setHealth(250.F);
+        } else {
+            this.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(100.0F);
+            this.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(0.3F);
+        }
+    }
+
     protected SoundEvent getAmbientSound() {
         return ModSoundEvents.MOLCAR_HAPPY;
     }
@@ -131,7 +163,7 @@ public class MolcarEntity extends AnimalEntity {
     }
 
     private boolean canEat(ItemStack stack) {
-        return stack.getItem().isFood() && this.onGround;
+        return stack.getItem().isFood() && (this.onGround || this.submergedInWater || this.touchingWater);
     }
 
     protected void eat(PlayerEntity player, ItemStack stack) {
@@ -181,7 +213,7 @@ public class MolcarEntity extends AnimalEntity {
     protected void loot(ItemEntity itemEntity) {
         ItemStack itemStack = itemEntity.getStack();
         Item item = itemStack.getItem();
-        if (item == Items.CARROT || item == Items.BREAD || item == ModItems.LETTUCE) {
+        if (item == Items.CARROT || item == Items.BREAD || item == ModItems.LETTUCE_LEAF) {
             if (this.canPickupItem(itemStack)) {
                 int i = itemStack.getCount();
                 if (i > 1) {
@@ -214,24 +246,67 @@ public class MolcarEntity extends AnimalEntity {
         super.drop(source);
     }
 
+    public boolean isBreedingItem(ItemStack stack) {
+        return stack.getItem() == ModItems.LETTUCE_LEAF || stack.getItem() == Items.BREAD || stack.getItem() == Items.CARROT;
+    }
+
     public ActionResult interactMob(PlayerEntity player, Hand hand) {
         ItemStack itemStack = player.getStackInHand(hand);
-        if (this.getEquippedStack(EquipmentSlot.MAINHAND).isEmpty() && (itemStack.getItem() == ModItems.LETTUCE || itemStack.getItem() == Items.CARROT || itemStack.getItem() == Items.BREAD)) {
-            this.equipStack(EquipmentSlot.MAINHAND, itemStack.split(1));
-            this.handDropChances[EquipmentSlot.MAINHAND.getEntitySlotId()] = 2.0F;
 
-            this.eatingTime = 0;
-            return ActionResult.success(this.world.isClient);
+        if (this.world.isClient) {  //client
+            if (this.isTamed() && this.isOwner(player)) {
+                return ActionResult.SUCCESS;
+            }else {
+                return ActionResult.PASS;
+            }
+        }else {  //server
+            if (this.isTamed()) {
+                if (this.isOwner(player)) {  //如果互動玩家為主人
+                    if (this.getEquippedStack(EquipmentSlot.MAINHAND).isEmpty()   //如果天竺鼠車車手上並沒有物品
+                            && this.isBreedingItem(itemStack)) {  //且玩家手上拿著生菜、胡蘿蔔、麵包任一種
+                        this.equipStack(EquipmentSlot.MAINHAND, itemStack.split(1));
+                        this.handDropChances[EquipmentSlot.MAINHAND.getEntitySlotId()] = 2.0F;
+
+                        this.eatingTime = 0;
+
+                    } else {
+                        player.startRiding(this);
+                        player.yaw = this.yaw;
+
+                    }
+                    return ActionResult.success(this.world.isClient);
+                }else {
+                    return ActionResult.PASS;
+                }
+            }else {  //如果未馴服
+                if (itemStack.getItem() == ModItems.LETTUCE_LEAF) {
+                    if (!player.abilities.creativeMode) {
+                        itemStack.decrement(1);
+                    }
+
+                    this.eat(player, itemStack);
+
+                    if (this.random.nextInt(3) == 0) {
+                        this.setOwner(player);
+                        this.navigation.stop();
+                        this.setTarget(null);
+                        this.world.sendEntityStatus(this, (byte) 7);
+                    } else {
+                        this.world.sendEntityStatus(this, (byte) 6);
+                    }
+
+                    return ActionResult.CONSUME;
+                }else {
+                    if (this.hasPassengers()) {
+                        return ActionResult.PASS;
+                    }
+
+                    return ActionResult.PASS;
+                }
+            }
         }
 
-        if (this.hasPassengers()) {
-            return super.interactMob(player, hand);
-        }
-
-        player.startRiding(this);
-        player.yaw = this.yaw;
-        player.pitch = this.pitch;
-        return ActionResult.success(this.world.isClient);
+        //return super.interactMob(player, hand);
     }
 
     protected boolean isImmobile() {
@@ -239,7 +314,7 @@ public class MolcarEntity extends AnimalEntity {
     }
     public void updatePassengerPosition(Entity passenger) {
         if (this.hasPassenger(passenger)) {
-            passenger.updatePosition(this.getX(), this.getY() - 0.42d, this.getZ());
+            passenger.updatePosition(this.getX(), this.getY() - 0.353d, this.getZ());
         }
     }
 
@@ -257,7 +332,6 @@ public class MolcarEntity extends AnimalEntity {
                 LivingEntity livingEntity = (LivingEntity)this.getPassengerList().get(0);
                 this.yaw = livingEntity.yaw;
                 this.prevYaw = this.yaw;
-                this.pitch = livingEntity.pitch * 0.5F;
                 this.setRotation(this.yaw, this.pitch);
                 this.bodyYaw = this.yaw;
                 this.headYaw = this.bodyYaw;
@@ -320,6 +394,58 @@ public class MolcarEntity extends AnimalEntity {
         }
     }
 
+    class WanderAroundFarGoal extends WanderAroundGoal {
+        private boolean field_24463 = true;
+        protected final float probability;
 
+        public WanderAroundFarGoal(PathAwareEntity pathAwareEntity, double d) {
+            this(pathAwareEntity, d, 0.001F);
+        }
 
+        public WanderAroundFarGoal(PathAwareEntity mob, double speed, float probability) {
+            super(mob, speed);
+            this.probability = probability;
+        }
+
+        public boolean canStart() {
+            if ((this.mob.getDataTracker().get(TAMEABLE_FLAGS) & 4) == 0) {  //相當於 this.mob.isTamed()
+                if (this.mob.hasPassengers()) {
+                    return false;
+                } else {
+                    if (!this.ignoringChance) {
+                        if (this.field_24463 && this.mob.getDespawnCounter() >= 100) {
+                            return false;
+                        }
+
+                        if (this.mob.getRandom().nextInt(this.chance) != 0) {
+                            return false;
+                        }
+                    }
+
+                    Vec3d vec3d = this.getWanderTarget();
+                    if (vec3d == null) {
+                        return false;
+                    } else {
+                        this.targetX = vec3d.x;
+                        this.targetY = vec3d.y;
+                        this.targetZ = vec3d.z;
+                        this.ignoringChance = false;
+                        return true;
+                    }
+                }
+            }else {
+                return false;
+            }
+        }
+
+        @Nullable
+        protected Vec3d getWanderTarget() {
+            if (this.mob.isInsideWaterOrBubbleColumn()) {
+                Vec3d vec3d = TargetFinder.findGroundTarget(this.mob, 15, 7);
+                return vec3d == null ? super.getWanderTarget() : vec3d;
+            } else {
+                return this.mob.getRandom().nextFloat() >= this.probability ? TargetFinder.findGroundTarget(this.mob, 10, 7) : super.getWanderTarget();
+            }
+        }
+    }
 }

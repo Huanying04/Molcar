@@ -4,6 +4,8 @@
   "package": "net.nekomura.molcar.molcar.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "DefaultAttributeRegistryMixin",
+    "MolcarEntityNaturalSpawn"
   ],
   "client": [
   ],
