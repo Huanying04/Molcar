@@ -6,6 +6,7 @@ import net.minecraft.entity.*;
 import net.minecraft.entity.ai.TargetFinder;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.goal.SwimGoal;
+import net.minecraft.entity.ai.goal.TemptGoal;
 import net.minecraft.entity.ai.goal.WanderAroundGoal;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -15,13 +16,16 @@ import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.recipe.Ingredient;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.BlockSoundGroup;
 import net.minecraft.sound.SoundEvent;
+import net.minecraft.tag.FluidTags;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
@@ -30,6 +34,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.LocalDifficulty;
 import net.minecraft.world.ServerWorldAccess;
 import net.minecraft.world.World;
+import net.nekomura.molcar.molcar.registry.ModEntities;
 import net.nekomura.molcar.molcar.registry.ModItems;
 import net.nekomura.molcar.molcar.registry.ModSoundEvents;
 import org.jetbrains.annotations.Nullable;
@@ -126,7 +131,7 @@ public class MolcarEntity extends TameableEntity {
         super.setTamed(tamed);
         if (tamed) {
             this.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(250.0F);
-            this.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(1.0F);
+            this.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(0.92F);
             this.setHealth(250.F);
         } else {
             this.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(100.0F);
@@ -194,10 +199,22 @@ public class MolcarEntity extends TameableEntity {
         }
     }
 
+    protected void fall(double heightDifference, boolean onGround, BlockState landedState, BlockPos landedPosition) {
+        if (onGround) {
+            if (this.fallDistance > 0.0F) {
+                landedState.getBlock().onLandedUpon(this.world, landedPosition, this, 0.5F * this.fallDistance);
+            }
+
+            this.fallDistance = 0.0F;
+        } else if (heightDifference < 0.0D) {
+            this.fallDistance = (float)((double)this.fallDistance - heightDifference);
+        }
+    }
+
     @Nullable
     @Override
     public PassiveEntity createChild(ServerWorld world, PassiveEntity entity) {
-        return null;
+        return ModEntities.MOLCAR.create(world);
     }
 
     private boolean wantsToPickupItem() {
@@ -257,11 +274,20 @@ public class MolcarEntity extends TameableEntity {
             if (this.isTamed() && this.isOwner(player)) {
                 return ActionResult.SUCCESS;
             }else {
-                return ActionResult.PASS;
+                return !this.isBreedingItem(itemStack) || !(this.getHealth() < this.getMaxHealth()) && this.isTamed() ? ActionResult.PASS : ActionResult.SUCCESS;
             }
         }else {  //server
             if (this.isTamed()) {
                 if (this.isOwner(player)) {  //如果互動玩家為主人
+                    if (this.isBreedingItem(itemStack) && this.getHealth() < this.getMaxHealth()) {
+                        if (!player.abilities.creativeMode) {
+                            itemStack.decrement(1);
+                        }
+
+                        this.heal(itemStack.getItem().getFoodComponent().getHunger() * 2F);
+                        return ActionResult.SUCCESS;
+                    }
+
                     if (this.getEquippedStack(EquipmentSlot.MAINHAND).isEmpty()   //如果天竺鼠車車手上並沒有物品
                             && this.isBreedingItem(itemStack)) {  //且玩家手上拿著生菜、胡蘿蔔、麵包任一種
                         this.equipStack(EquipmentSlot.MAINHAND, itemStack.split(1));
@@ -271,8 +297,7 @@ public class MolcarEntity extends TameableEntity {
 
                     } else {
                         player.startRiding(this);
-                        player.yaw = this.yaw;
-
+                        player.setHeadYaw(this.yaw);
                     }
                     return ActionResult.success(this.world.isClient);
                 }else {
@@ -305,8 +330,6 @@ public class MolcarEntity extends TameableEntity {
                 }
             }
         }
-
-        //return super.interactMob(player, hand);
     }
 
     protected boolean isImmobile() {
@@ -328,13 +351,15 @@ public class MolcarEntity extends TameableEntity {
 
     public void travel(Vec3d movementInput) {
         if (this.isAlive()) {
-            if (this.hasPassengers() && this.canBeControlledByRider()) {
+            if (this.hasPassengers() && this.canBeControlledByRider() && this.getPassengerList().get(0) instanceof PlayerEntity) {
                 LivingEntity livingEntity = (LivingEntity)this.getPassengerList().get(0);
                 this.yaw = livingEntity.yaw;
                 this.prevYaw = this.yaw;
                 this.setRotation(this.yaw, this.pitch);
                 this.bodyYaw = this.yaw;
                 this.headYaw = this.bodyYaw;
+                this.stepHeight = 1.0F;
+                this.flyingSpeed = this.getMovementSpeed() * 0.1F;
                 float f = 0;
                 float g = livingEntity.forwardSpeed;
 

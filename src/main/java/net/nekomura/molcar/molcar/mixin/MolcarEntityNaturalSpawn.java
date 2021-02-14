@@ -17,7 +17,6 @@ public abstract class MolcarEntityNaturalSpawn {
 
     @Inject(method = "addFarmAnimals(Lnet/minecraft/world/biome/SpawnSettings$Builder;)V", at = @At("HEAD"))
     private static void addMolcar(SpawnSettings.Builder builder, CallbackInfo ci) {
-        System.out.println("Added!");
         builder.spawn(SpawnGroup.CREATURE, new SpawnSettings.SpawnEntry(MOLCAR, 7, 1, 3));
     }
 }
