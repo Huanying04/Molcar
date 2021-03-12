@@ -1,5 +1,5 @@
 {
-  "item.molcar.lettuce_leaf": "生菜",
+  "item.molcar.lettuce_leaf": "萵苣",
   "entity.molcar.molcar": "天竺鼠車車",
   "subtitle.molcar.molcar_happy": "天竺鼠車車開心地叫",
   "subtitle.molcar.molcar_feed": "天竺鼠車車完食",
@@ -7,5 +7,6 @@
   "subtitle.molcar.molcar_die": "天竺鼠車車死亡",
   "item.molcar.molcar_spawn_egg": "天竺鼠車車 生怪蛋",
   "subtitle.molcar.molcar_step": "天竺鼠車車走動",
-  "subtitle.molcar.molcar_eat": "天竺鼠車車吃東西"
+  "subtitle.molcar.molcar_eat": "天竺鼠車車吃東西",
+  "item.molcar.lettuce_seeds": "萵苣種子"
 }
