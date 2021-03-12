@@ -2,8 +2,6 @@ package net.nekomura.molcar.molcar.renderer;
 
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.MobEntityRenderer;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.util.Identifier;
 import net.nekomura.molcar.molcar.Molcar;
 import net.nekomura.molcar.molcar.entity.MolcarEntity;
