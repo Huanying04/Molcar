@@ -5,4 +5,4 @@
 
 # 下載
 * CurseForge: https://www.curseforge.com/minecraft/mc-mods/molcar
-* GitHub的Release頁面
+* GitHub的Release頁面: https://github.com/Huanying04/Molcar/releases
