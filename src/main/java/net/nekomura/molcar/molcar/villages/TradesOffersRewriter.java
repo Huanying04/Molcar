@@ -7,7 +7,6 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.Items;
 import net.minecraft.village.TradeOffers;
 import net.minecraft.village.VillagerProfession;
-import net.nekomura.molcar.molcar.copies.CopyOfTradeOffers;
 import net.nekomura.molcar.molcar.registry.ModItems;
 
 public class TradesOffersRewriter {

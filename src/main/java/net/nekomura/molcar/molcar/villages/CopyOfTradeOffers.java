@@ -1,4 +1,4 @@
-package net.nekomura.molcar.molcar.copies;
+package net.nekomura.molcar.molcar.villages;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
@@ -10,11 +10,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Random;
 
-/**
- * This is a copy of a part of Minecraft source code, I do not own any of these codes.
- * All code's ownership belongs to Mojang Studios.
- * The original code is from {@link net.minecraft.village.TradeOffers}
- */
 public class CopyOfTradeOffers {
     public static class BuyForOneEmeraldFactory implements TradeOffers.Factory {
         private final Item buy;
