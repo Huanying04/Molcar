@@ -14,7 +14,7 @@ public class LightningCarrot extends Item {
 
     @Override
     public ItemStack finishUsing(ItemStack stack, World world, LivingEntity user) {
-        user.applyStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 60 * 20, 5));
+        user.applyStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 60 * 20, 2));
         return super.finishUsing(stack, world, user);
     }
 }
