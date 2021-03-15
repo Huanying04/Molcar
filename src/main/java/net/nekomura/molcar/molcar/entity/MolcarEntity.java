@@ -1,5 +1,6 @@
 package net.nekomura.molcar.molcar.entity;
 
+import net.minecraft.advancement.criterion.Criteria;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.*;
@@ -12,19 +13,33 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.PathAwareEntity;
+import net.minecraft.entity.mob.PiglinBrain;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.Inventories;
+import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.loot.LootTable;
+import net.minecraft.loot.context.LootContext;
+import net.minecraft.loot.context.LootContextParameters;
+import net.minecraft.loot.context.LootContextTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.screen.GenericContainerScreenHandler;
+import net.minecraft.screen.NamedScreenHandlerFactory;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.BlockSoundGroup;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
@@ -37,20 +52,22 @@ import net.nekomura.molcar.molcar.registry.ModSoundEvents;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class MolcarEntity extends TameableEntity{
+public class MolcarEntity extends TameableEntity  implements Inventory, NamedScreenHandlerFactory {
 
     private int eatingTime;
     private static final Predicate<ItemEntity> PICKABLE_DROP_FILTER;
-    protected SimpleInventory items;
+    private DefaultedList<ItemStack> inventory;
 
     static {
         PICKABLE_DROP_FILTER = (itemEntity) -> !itemEntity.cannotPickup()
                                 && itemEntity.isAlive()
                                 && itemEntity.getStack().isFood()
                                 && (itemEntity.getStack().getItem().equals(ModItems.LETTUCE_LEAF)
+                                    || itemEntity.getStack().getItem().equals(ModItems.LIGHTNING_CARROT)
                                     || itemEntity.getStack().getItem().equals(Items.CARROT)
                                     || itemEntity.getStack().getItem().equals(Items.BREAD)
         );
@@ -60,6 +77,7 @@ public class MolcarEntity extends TameableEntity{
         super(entityType, world);
         this.setCanPickUpLoot(true);
         this.setTamed(false);
+        this.inventory = DefaultedList.ofSize(9, ItemStack.EMPTY);
     }
 
     public static DefaultAttributeContainer getAttributeContainer() {
@@ -228,7 +246,7 @@ public class MolcarEntity extends TameableEntity{
     protected void loot(ItemEntity itemEntity) {
         ItemStack itemStack = itemEntity.getStack();
         Item item = itemStack.getItem();
-        if (item == Items.CARROT || item == Items.BREAD || item == ModItems.LETTUCE_LEAF) {
+        if (item == Items.CARROT || item == Items.BREAD || item == ModItems.LETTUCE_LEAF || item == ModItems.LIGHTNING_CARROT) {
             if (this.canPickupItem(itemStack)) {
                 int i = itemStack.getCount();
                 if (i > 1) {
@@ -262,7 +280,7 @@ public class MolcarEntity extends TameableEntity{
     }
 
     public boolean isBreedingItem(ItemStack stack) {
-        return stack.getItem() == ModItems.LETTUCE_LEAF || stack.getItem() == Items.BREAD || stack.getItem() == Items.CARROT;
+        return stack.getItem() == ModItems.LETTUCE_LEAF || stack.getItem() == ModItems.LIGHTNING_CARROT || stack.getItem() == Items.BREAD || stack.getItem() == Items.CARROT;
     }
 
     public ActionResult interactMob(PlayerEntity player, Hand hand) {
@@ -277,6 +295,15 @@ public class MolcarEntity extends TameableEntity{
         }else {  //server
             if (this.isTamed()) {
                 if (this.isOwner(player)) {  //如果互動玩家為主人
+                    if (player.isSneaking()) {
+                        player.openHandledScreen(this);
+                        if (!player.world.isClient) {
+                            return ActionResult.CONSUME;
+                        } else {
+                            return ActionResult.SUCCESS;
+                        }
+                    }
+
                     if (this.isBreedingItem(itemStack) && this.getHealth() < this.getMaxHealth()) {
                         if (!player.abilities.creativeMode) {
                             itemStack.decrement(1);
@@ -376,6 +403,98 @@ public class MolcarEntity extends TameableEntity{
             }else {
                 super.travel(movementInput);
             }
+        }
+    }
+
+    @Override
+    public int size() {
+        return 9;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        Iterator var1 = this.inventory.iterator();
+
+        ItemStack itemStack;
+        do {
+            if (!var1.hasNext()) {
+                return true;
+            }
+
+            itemStack = (ItemStack)var1.next();
+        } while(itemStack.isEmpty());
+
+        return false;
+    }
+
+    @Override
+    public ItemStack getStack(int slot) {
+        return this.inventory.get(slot);
+    }
+
+    @Override
+    public ItemStack removeStack(int slot, int amount) {
+        return Inventories.splitStack(this.inventory, slot, amount);
+    }
+
+    @Override
+    public ItemStack removeStack(int slot) {
+        ItemStack itemStack = (ItemStack)this.inventory.get(slot);
+        if (itemStack.isEmpty()) {
+            return ItemStack.EMPTY;
+        } else {
+            this.inventory.set(slot, ItemStack.EMPTY);
+            return itemStack;
+        }
+    }
+
+    @Override
+    public void setStack(int slot, ItemStack stack) {
+        this.inventory.set(slot, stack);
+        if (!stack.isEmpty() && stack.getCount() > this.getMaxCountPerStack()) {
+            stack.setCount(this.getMaxCountPerStack());
+        }
+    }
+
+    @Override
+    public void markDirty() {
+
+    }
+
+    @Override
+    public boolean canPlayerUse(PlayerEntity player) {
+        if (this.removed) {
+            return false;
+        } else {
+            return player.squaredDistanceTo(this) <= 64.0D && this.isOwner(player);
+        }
+    }
+
+    @Nullable
+    @Override
+    public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
+        if (player.isSpectator()) {
+            return null;
+        } else {
+            return this.getScreenHandler(syncId, inv);
+        }
+    }
+
+    public ScreenHandler getScreenHandler(int syncId, PlayerInventory playerInventory) {
+        return new GenericContainerScreenHandler(ScreenHandlerType.GENERIC_9X1, syncId, playerInventory, this, 1);
+    }
+
+    @Override
+    public void clear() {
+        this.inventory.clear();
+    }
+
+    public boolean equip(int slot, ItemStack item) {
+        if (slot >= 0 && slot < this.size()) {
+            this.setStack(slot, item);
+            return true;
+        } else {
+            return false;
         }
     }
 
