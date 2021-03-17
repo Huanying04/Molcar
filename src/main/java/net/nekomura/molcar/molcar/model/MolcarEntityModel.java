@@ -1,6 +1,8 @@
 package net.nekomura.molcar.molcar.model;
 
-import net.minecraft.client.model.ModelPart;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.model.*;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.util.math.MatrixStack;
@@ -8,6 +10,7 @@ import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.math.MathHelper;
 import net.nekomura.molcar.molcar.entity.MolcarEntity;
 
+@Environment(EnvType.CLIENT)
 public class MolcarEntityModel<T extends MobEntity> extends EntityModel<MolcarEntity> {
 
     public final ModelPart body;
@@ -16,44 +19,49 @@ public class MolcarEntityModel<T extends MobEntity> extends EntityModel<MolcarEn
     public final ModelPart back_leg_left;
     public final ModelPart back_leg_right;
 
-    public MolcarEntityModel() {
-        textureWidth = 256;
-        textureHeight = 256;
+    public MolcarEntityModel(ModelPart root) {
+        super();
+        this.body = root.getChild("body");
+        this.front_leg_left = root.getChild("front_leg_left");
+        this.front_leg_right = root.getChild("front_leg_right");
+        this.back_leg_left = root.getChild("back_leg_left");
+        this.back_leg_right = root.getChild("back_leg_right");
+    }
 
-        body = new ModelPart(this);
-        body.setPivot(0.0F, 24.0F, 0.0F);
-        body.setTextureOffset(119, 53).addCuboid(-13.0F, -28.0F, -15.0F, 26.0F, 1.0F, 33.0F, 0.0F, false);
-        body.setTextureOffset(0, 0).addCuboid(-14.0F, -28.0F, -16.0F, 28.0F, 12.0F, 1.0F, 0.0F, false);
-        body.setTextureOffset(0, 13).addCuboid(-15.0F, -16.0F, -19.0F, 30.0F, 13.0F, 1.0F, 0.0F, false);
-        body.setTextureOffset(119, 40).addCuboid(-14.0F, -28.0F, 18.0F, 28.0F, 12.0F, 1.0F, 0.0F, false);
-        body.setTextureOffset(41, 40).addCuboid(-15.0F, -16.0F, 19.0F, 30.0F, 13.0F, 1.0F, 0.0F, false);
-        body.setTextureOffset(41, 0).addCuboid(-16.0F, -3.0F, -19.0F, 32.0F, 1.0F, 39.0F, 0.0F, false);
-        body.setTextureOffset(84, 40).addCuboid(13.0F, -28.0F, -15.0F, 1.0F, 11.0F, 33.0F, 0.0F, false);
-        body.setTextureOffset(84, 40).addCuboid(-14.0F, -28.0F, -15.0F, 1.0F, 11.0F, 33.0F, 0.0F, true);
-        body.setTextureOffset(0, 31).addCuboid(15.0F, -16.0F, -19.0F, 1.0F, 13.0F, 39.0F, 0.0F, true);
-        body.setTextureOffset(0, 31).addCuboid(-16.0F, -16.0F, -19.0F, 1.0F, 13.0F, 39.0F, 0.0F, false);
-        body.setTextureOffset(41, 56).addCuboid(-16.0F, -17.0F, -19.0F, 2.0F, 1.0F, 39.0F, 0.0F, true);
-        body.setTextureOffset(41, 56).addCuboid(14.0F, -17.0F, -19.0F, 2.0F, 1.0F, 39.0F, 0.0F, false);
-        body.setTextureOffset(12, 31).addCuboid(-22.0F, -27.0F, -13.0F, 8.0F, 4.0F, 1.0F, 0.0F, false);
-        body.setTextureOffset(12, 31).addCuboid(14.0F, -27.0F, -13.0F, 8.0F, 4.0F, 1.0F, 0.0F, false);
-        body.setTextureOffset(0, 27).addCuboid(-14.0F, -17.0F, -19.0F, 28.0F, 1.0F, 3.0F, 0.0F, false);
-        body.setTextureOffset(41, 54).addCuboid(-14.0F, -17.0F, 19.0F, 28.0F, 1.0F, 1.0F, 0.0F, false);
-
-        front_leg_left = new ModelPart(this);
-        front_leg_left.setPivot(16.0F, 18.5F, -12.5F);
-        front_leg_left.setTextureOffset(0, 31).addCuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F, 0.0F, false);
-
-        front_leg_right = new ModelPart(this);
-        front_leg_right.setPivot(-16.0F, 18.5F, -12.5F);
-        front_leg_right.setTextureOffset(0, 31).addCuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F, 0.0F, false);
-
-        back_leg_left = new ModelPart(this);
-        back_leg_left.setPivot(16.0F, 18.5F, 13.5F);
-        back_leg_left.setTextureOffset(0, 31).addCuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F, 0.0F, false);
-
-        back_leg_right = new ModelPart(this);
-        back_leg_right.setPivot(-16.0F, 18.5F, 13.5F);
-        back_leg_right.setTextureOffset(0, 31).addCuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F, 0.0F, false);
+    public static TexturedModelData getTexturedModelData() {
+        ModelData modelData = new ModelData();
+        ModelPartData modelPartData = modelData.getRoot();
+        modelPartData.addChild("body", ModelPartBuilder.create()
+                        .uv(119, 53).cuboid(-13.0F, -28.0F, -15.0F, 26.0F, 1.0F, 33.0F)
+                        .uv(0, 0).cuboid(-14.0F, -28.0F, -16.0F, 28.0F, 12.0F, 1.0F)
+                        .uv(0, 13).cuboid(-15.0F, -16.0F, -19.0F, 30.0F, 13.0F, 1.0F)
+                        .uv(119, 40).cuboid(-14.0F, -28.0F, 18.0F, 28.0F, 12.0F, 1.0F)
+                        .uv(41, 40).cuboid(-15.0F, -16.0F, 19.0F, 30.0F, 13.0F, 1.0F)
+                        .uv(41, 0).cuboid(-16.0F, -3.0F, -19.0F, 32.0F, 1.0F, 39.0F)
+                        .uv(84, 40).cuboid(13.0F, -28.0F, -15.0F, 1.0F, 11.0F, 33.0F)
+                        .uv(84, 40).cuboid(-14.0F, -28.0F, -15.0F, 1.0F, 11.0F, 33.0F, true)
+                        .uv(0, 31).cuboid(15.0F, -16.0F, -19.0F, 1.0F, 13.0F, 39.0F, true)
+                        .uv(0, 31).cuboid(-16.0F, -16.0F, -19.0F, 1.0F, 13.0F, 39.0F)
+                        .uv(41, 56).cuboid(-16.0F, -17.0F, -19.0F, 2.0F, 1.0F, 39.0F, true)
+                        .uv(41, 56).cuboid(14.0F, -17.0F, -19.0F, 2.0F, 1.0F, 39.0F)
+                        .uv(12, 31).cuboid(-22.0F, -27.0F, -13.0F, 8.0F, 4.0F, 1.0F)
+                        .uv(12, 31).cuboid(14.0F, -27.0F, -13.0F, 8.0F, 4.0F, 1.0F)
+                        .uv(0, 27).cuboid(-14.0F, -17.0F, -19.0F, 28.0F, 1.0F, 3.0F)
+                        .uv(41, 54).cuboid(-14.0F, -17.0F, 19.0F, 28.0F, 1.0F, 1.0F),
+                ModelTransform.pivot(0.0F, 24.0F, 0.0F));
+        modelPartData.addChild("front_leg_left", ModelPartBuilder.create()
+                    .uv(0, 31).cuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F),
+                ModelTransform.pivot(16.0F, 18.5F, -12.5F));
+        modelPartData.addChild("front_leg_right", ModelPartBuilder.create()
+                    .uv(0, 31).cuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F),
+                ModelTransform.pivot(-16.0F, 18.5F, -12.5F));
+        modelPartData.addChild("back_leg_left", ModelPartBuilder.create()
+                    .uv(0, 31).cuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F),
+                ModelTransform.pivot(16.0F, 18.5F, 13.5F));
+        modelPartData.addChild("back_leg_right", ModelPartBuilder.create()
+                    .uv(0, 31).cuboid(-1.0F, -1.5F, -3.5F, 2.0F, 7.0F, 7.0F),
+                ModelTransform.pivot(-16.0F, 18.5F, 13.5F));
+        return TexturedModelData.of(modelData, 256, 256);
     }
 
     @Override

@@ -27,7 +27,7 @@ public class ModEntities {
 
         EntityRendererRegistry.INSTANCE.register(
                 MOLCAR,
-                (dispatcher, context) -> new MolcarEntityRenderer(dispatcher)
+                MolcarEntityRenderer::new
         );
     }
 

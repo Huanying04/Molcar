@@ -1,10 +1,9 @@
 package net.nekomura.molcar.molcar.entity;
 
-import net.minecraft.advancement.criterion.Criteria;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.*;
-import net.minecraft.entity.ai.TargetFinder;
+import net.minecraft.entity.ai.FuzzyTargeting;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.goal.SwimGoal;
 import net.minecraft.entity.ai.goal.WanderAroundGoal;
@@ -13,27 +12,20 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.PathAwareEntity;
-import net.minecraft.entity.mob.PiglinBrain;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.loot.LootTable;
-import net.minecraft.loot.context.LootContext;
-import net.minecraft.loot.context.LootContextParameters;
-import net.minecraft.loot.context.LootContextTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.BlockSoundGroup;
 import net.minecraft.sound.SoundEvent;
@@ -187,12 +179,12 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
         return stack.getItem().isFood() && (this.onGround || this.submergedInWater || this.touchingWater);
     }
 
-    protected void eat(PlayerEntity player, ItemStack stack) {
+    protected void eat(PlayerEntity player, Hand hand, ItemStack stack) {
         if (stack.getItem().isFood()) {
             this.playSound(this.getEatSound(stack), 1.0F, 1.0F);
         }
 
-        super.eat(player, stack);
+        super.eat(player, hand, stack);
     }
 
     public boolean isCollidable() {
@@ -253,12 +245,12 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
                     this.dropItem(itemStack.split(i - 1));
                 }
 
-                this.method_29499(itemEntity);
+                this.triggerItemPickedUpByEntityCriteria(itemEntity);
                 this.equipStack(EquipmentSlot.MAINHAND, itemStack.split(1));
                 this.handDropChances[EquipmentSlot.MAINHAND.getEntitySlotId()] = 2.0F;
                 this.sendPickup(itemEntity, itemStack.getCount());
 
-                itemEntity.remove();
+                itemEntity.discard();
                 this.eatingTime = 0;
             }
         }
@@ -305,7 +297,7 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
                     }
 
                     if (this.isBreedingItem(itemStack) && this.getHealth() < this.getMaxHealth()) {
-                        if (!player.abilities.creativeMode) {
+                        if (!player.getAbilities().creativeMode) {
                             itemStack.decrement(1);
                         }
 
@@ -330,11 +322,12 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
                 }
             }else {  //如果未馴服
                 if (itemStack.getItem() == ModItems.LETTUCE_LEAF) {
-                    if (!player.abilities.creativeMode) {
+                    if (!player.getAbilities().creativeMode) {
                         itemStack.decrement(1);
                     }
 
-                    this.eat(player, itemStack);
+                    //TODO check this
+                    this.eat(player, Hand.MAIN_HAND, itemStack);
 
                     if (this.random.nextInt(3) == 0) {
                         this.setOwner(player);
@@ -399,7 +392,7 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
                     this.setVelocity(Vec3d.ZERO);
                 }
 
-                this.method_29242(this, false);
+                this.updateLimbs(this, false);
             }else {
                 super.travel(movementInput);
             }
@@ -463,7 +456,7 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
 
     @Override
     public boolean canPlayerUse(PlayerEntity player) {
-        if (this.removed) {
+        if (this.isRemoved()) {
             return false;
         } else {
             return player.squaredDistanceTo(this) <= 64.0D && this.isOwner(player);
@@ -583,10 +576,10 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
         @Nullable
         protected Vec3d getWanderTarget() {
             if (this.mob.isInsideWaterOrBubbleColumn()) {
-                Vec3d vec3d = TargetFinder.findGroundTarget(this.mob, 15, 7);
+                Vec3d vec3d = FuzzyTargeting.find(this.mob, 15, 7);
                 return vec3d == null ? super.getWanderTarget() : vec3d;
             } else {
-                return this.mob.getRandom().nextFloat() >= this.probability ? TargetFinder.findGroundTarget(this.mob, 10, 7) : super.getWanderTarget();
+                return this.mob.getRandom().nextFloat() >= this.probability ? FuzzyTargeting.find(this.mob, 10, 7) : super.getWanderTarget();
             }
         }
     }

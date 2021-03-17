@@ -6,7 +6,8 @@
   "mixins": [
     "ComposterBlockMixin",
     "DefaultAttributeRegistryMixin",
-    "MolcarEntityNaturalSpawn"
+    "MolcarEntityNaturalSpawn",
+    "EntityModelsMixin"
   ],
   "client": [
   ],
