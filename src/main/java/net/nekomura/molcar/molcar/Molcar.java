@@ -1,10 +1,7 @@
 package net.nekomura.molcar.molcar;
 
 import net.fabricmc.api.ModInitializer;
-import net.nekomura.molcar.molcar.registry.ModBlocks;
-import net.nekomura.molcar.molcar.registry.ModEntities;
-import net.nekomura.molcar.molcar.registry.ModItems;
-import net.nekomura.molcar.molcar.registry.ModSoundEvents;
+import net.nekomura.molcar.molcar.registry.*;
 import net.nekomura.molcar.molcar.villages.TradesOffersRewriter;
 
 public class Molcar implements ModInitializer {

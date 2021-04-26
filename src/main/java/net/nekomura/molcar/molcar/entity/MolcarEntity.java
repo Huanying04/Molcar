@@ -1,6 +1,6 @@
 package net.nekomura.molcar.molcar.entity;
 
-import net.minecraft.advancement.criterion.Criteria;
+import com.google.common.collect.Maps;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.*;
@@ -11,34 +11,33 @@ import net.minecraft.entity.ai.goal.WanderAroundGoal;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.data.DataTracker;
+import net.minecraft.entity.data.TrackedData;
+import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.PathAwareEntity;
-import net.minecraft.entity.mob.PiglinBrain;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.loot.LootTable;
-import net.minecraft.loot.context.LootContext;
-import net.minecraft.loot.context.LootContextParameters;
-import net.minecraft.loot.context.LootContextTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.ServerConfigHandler;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.BlockSoundGroup;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -46,23 +45,25 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.LocalDifficulty;
 import net.minecraft.world.ServerWorldAccess;
 import net.minecraft.world.World;
+import net.nekomura.molcar.molcar.Molcar;
 import net.nekomura.molcar.molcar.registry.ModEntities;
 import net.nekomura.molcar.molcar.registry.ModItems;
 import net.nekomura.molcar.molcar.registry.ModSoundEvents;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class MolcarEntity extends TameableEntity  implements Inventory, NamedScreenHandlerFactory {
 
     private int eatingTime;
+    private static final TrackedData<Integer> MOLCAR_TYPE;
     private static final Predicate<ItemEntity> PICKABLE_DROP_FILTER;
+    public static final Map<Integer, Identifier> TEXTURES;
     private DefaultedList<ItemStack> inventory;
 
     static {
+        MOLCAR_TYPE = DataTracker.registerData(MolcarEntity.class, TrackedDataHandlerRegistry.INTEGER);
         PICKABLE_DROP_FILTER = (itemEntity) -> !itemEntity.cannotPickup()
                                 && itemEntity.isAlive()
                                 && itemEntity.getStack().isFood()
@@ -71,6 +72,9 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
                                     || itemEntity.getStack().getItem().equals(Items.CARROT)
                                     || itemEntity.getStack().getItem().equals(Items.BREAD)
         );
+        TEXTURES = Util.make(Maps.newHashMap(), (hashMap) -> {
+            hashMap.put(0, new Identifier(Molcar.MOD_ID, "textures/entity/molcar/potato.png"));
+        });
     }
 
     public MolcarEntity(EntityType<? extends TameableEntity> entityType, World world) {
@@ -102,6 +106,23 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
 
     protected void initDataTracker() {
         super.initDataTracker();
+        this.dataTracker.startTracking(MOLCAR_TYPE, 0);
+    }
+
+    public int getMolcarType() {
+        return this.dataTracker.get(MOLCAR_TYPE);
+    }
+
+    public void setMolcarType(int type) {
+        if (type != 0) {
+            type = this.random.nextInt(1);
+        }
+
+        this.dataTracker.set(MOLCAR_TYPE, type);
+    }
+
+    public Identifier getTexture() {
+        return TEXTURES.getOrDefault(this.getMolcarType(), TEXTURES.get(0));
     }
 
     @Nullable
@@ -360,6 +381,7 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
     protected boolean isImmobile() {
         return super.isImmobile() && this.hasPassengers();
     }
+
     public void updatePassengerPosition(Entity passenger) {
         if (this.hasPassenger(passenger)) {
             passenger.updatePosition(this.getX(), this.getY() - 0.353d, this.getZ());
@@ -403,6 +425,30 @@ public class MolcarEntity extends TameableEntity  implements Inventory, NamedScr
             }else {
                 super.travel(movementInput);
             }
+        }
+    }
+
+    public void writeCustomDataToTag(CompoundTag tag) {
+        super.writeCustomDataToTag(tag);
+        tag.putBoolean("Tame", this.isTamed());
+        if (this.getOwnerUuid() != null) {
+            tag.putUuid("Owner", this.getOwnerUuid());
+        }
+    }
+
+    public void readCustomDataFromTag(CompoundTag tag) {
+        super.readCustomDataFromTag(tag);
+        this.setTamed(tag.getBoolean("Tame"));
+        UUID uUID;
+        if (tag.containsUuid("Owner")) {
+            uUID = tag.getUuid("Owner");
+        } else {
+            String string = tag.getString("Owner");
+            uUID = ServerConfigHandler.getPlayerUuidByName(this.getServer(), string);
+        }
+
+        if (uUID != null) {
+            this.setOwnerUuid(uUID);
         }
     }
 
